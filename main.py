@@ -1,30 +1,31 @@
-import csv
+import pandas as pd
 from live_fetcher import get_live_data
 from indicators import calculate_rsi
 
 def main():
+    print('Fetching live data...')
     live_data = get_live_data()
+    
+    if not live_data:
+        print('No live data fetched. Exiting.')
+        return
 
-    with open('live_report.csv', 'w', newline='') as csvfile:
-        fieldnames = ['Ticker', 'Last 15 Days Closing Prices', 'RSI (14-day)']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
+    report_data = []
+    for ticker, prices in live_data.items():
+        if prices:
+            rsi = calculate_rsi(prices)
+            report_data.append({"Ticker": ticker, "RSI": rsi})
+            print(f'Ticker: {ticker}, RSI: {rsi}')
+        else:
+            report_data.append({"Ticker": ticker, "RSI": "N/A"})
+            print(f'No sufficient data for {ticker} to calculate RSI.')
 
-        for ticker, prices in live_data.items():
-            if len(prices) >= 14:
-                rsi_values = calculate_rsi(prices)
-                if rsi_values:
-                    latest_rsi = rsi_values[-1]
-                else:
-                    latest_rsi = 'N/A'
-            else:
-                latest_rsi = 'Not enough data for RSI'
-            
-            writer.writerow({
-                'Ticker': ticker,
-                'Last 15 Days Closing Prices': str(prices),
-                'RSI (14-day)': latest_rsi
-            })
+    if report_data:
+        df_report = pd.DataFrame(report_data)
+        df_report.to_csv('live_report.csv', index=False)
+        print('Live report saved to live_report.csv')
+    else:
+        print('No data to report.')
 
 if __name__ == '__main__':
     main()
